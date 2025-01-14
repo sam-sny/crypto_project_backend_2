@@ -5,7 +5,9 @@ from jose import JWTError, jwt
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 import requests
-from . import crud, models, schemas
+from app import crud
+from app.models import user
+from app.schemas import schema
 from .database import SessionLocal, engine
 from dotenv import load_dotenv
 import os
@@ -20,7 +22,7 @@ redirect_uri = os.getenv("REDIRECT_URI")
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
 
-models.Base.metadata.create_all(bind=engine)
+user.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -33,8 +35,8 @@ def get_db():
         db.close()
 
 # Sign Up
-@app.post("/auth/signup", response_model=schemas.UserResponse)
-def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
+@app.post("/auth/signup", response_model=schema.UserResponse)
+def signup(user: schema.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
