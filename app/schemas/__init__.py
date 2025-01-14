@@ -1,10 +1,13 @@
 from pydantic import BaseModel, EmailStr
 
+
 class UserBase(BaseModel):
     email: EmailStr
 
+
 class UserCreate(UserBase):
     password: str
+
 
 class UserResponse(UserBase):
     id: int
@@ -12,4 +15,4 @@ class UserResponse(UserBase):
     is_google_user: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True

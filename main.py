@@ -8,7 +8,7 @@ import requests
 from app import crud
 from app.models import user
 from app.schemas import schema
-from .database import SessionLocal, engine
+from app.database import SessionLocal, engine
 from dotenv import load_dotenv
 import os
 
@@ -26,6 +26,7 @@ user.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+
 # Dependency
 def get_db():
     db = SessionLocal()
@@ -33,6 +34,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 # Sign Up
 @app.post("/auth/signup", response_model=schema.UserResponse)
@@ -42,13 +44,15 @@ def signup(user: schema.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_user(db=db, user=user)
 
+
 # Login
 @app.post("/auth/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = crud.get_user_by_email(db, email=form_data.username)
+def login(form_data: schema.UserLoginRequest, db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, email=form_data.email)
     if not user or not crud.pwd_context.verify(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
     token = jwt.encode({"sub": user.email}, SECRET_KEY, algorithm=ALGORITHM)
     return {"access_token": token, "token_type": "bearer"}
+
 
 # Google Sign-In Redirect
