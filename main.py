@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi_sso.sso.google import GoogleSSO
 from jose import JWTError, jwt
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
@@ -25,6 +26,8 @@ ALGORITHM = "HS256"
 user.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+google_sso = GoogleSSO(client_id, client_secret, redirect_uri)
 
 
 # Dependency
@@ -56,3 +59,11 @@ def login(form_data: schema.UserLoginRequest, db: Session = Depends(get_db)):
 
 
 # Google Sign-In Redirect
+@app.get("/login/google")
+async def google_login():
+    """Generate login url and redirect"""
+    with google_sso:
+        return await google_sso.get_login_redirect()
+
+
+# Process login request from google and return user data with access token
