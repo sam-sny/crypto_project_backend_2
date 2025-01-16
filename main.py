@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_sso.sso.google import GoogleSSO
+from fastapi.middleware.cors import CORSMiddleware
 from jose import JWTError, jwt
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
@@ -26,6 +27,21 @@ ALGORITHM = "HS256"
 user.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3000",  # Allow your frontend development server
+    "https://tradeinvortex.org" # Add more origins if needed
+]
+
+# Add CORSMiddleware to your app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Allows all origins listed above
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
+
 
 google_sso = GoogleSSO(client_id, client_secret, redirect_uri)
 
