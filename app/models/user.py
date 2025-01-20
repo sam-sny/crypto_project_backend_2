@@ -18,5 +18,12 @@ class User(Base):
     hashed_password = Column(String(255), nullable=True)  # Nullable for Google sign-in users
     is_active = Column(Boolean, default=True)
     is_google_user = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now)
+
+class TokenBlacklist(Base):
+    """Token blacklist model"""
+
+    __tablename__ = "token_blacklist"
+    token = Column(String(255), primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.now, nullable=True)

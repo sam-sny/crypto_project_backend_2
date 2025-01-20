@@ -11,11 +11,12 @@ from google.oauth2 import id_token
 import requests
 from app import crud
 from app.models import user
+from app.middleware.authenticate import is_authenticated
 from app.schemas import schema
 from app.database import SessionLocal, engine
 from dotenv import load_dotenv
 import os
-from smtplib import SMTP
+from smtplib import SMTP_SSL
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 
@@ -32,7 +33,7 @@ SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
 
 SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT"))
+SMTP_PORT = os.getenv("SMTP_PORT")
 SMTP_USERNAME = os.getenv("SMTP_USERNAME")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 FRONTEND_URL = os.getenv("FRONTEND_URL")
@@ -78,8 +79,7 @@ def send_email(subject: str, recipient: str, body: str):
     msg["From"] = SMTP_USERNAME
     msg["To"] = recipient
 
-    with SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
+    with SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=60) as server:
         server.login(SMTP_USERNAME, SMTP_PASSWORD)
         server.sendmail(SMTP_USERNAME, recipient, msg.as_string())
 
@@ -115,22 +115,26 @@ def signup(user: schema.UserCreate, background_tasks: BackgroundTasks, db: Sessi
     # Generate a verification token
     expiration = datetime.now() + timedelta(minutes=3)
     verification_token = jwt.encode(
-        {"sub": user.email, "exp": expiration}, SECRET_KEY, algorithm=ALGORITHM
+        {
+           "sub": user.email,  # Subject of the token
+           "id": created_user.id,  # Add user id to the token
+           "exp": expiration  # Expiration time
+        }, SECRET_KEY, algorithm=ALGORITHM
     )
 
     # Verification link
-    verification_link = f"{FRONTEND_URL}/profile/overview?token={verification_token}"
+    #verification_link = f"{FRONTEND_URL}/profile/overview?token={verification_token}"
 
     # Email content
-    email_subject = "Verify Your Email"
-    email_body = f"""
-    <p>Thank you for signing up!</p>
-    <p>Please click the link below to verify your email. This link will expire in 3 minutes:</p>
-    <a href="{verification_link}">Verify Email</a>
-    """
+    #email_subject = "Verify Your Email"
+    #email_body = f"""
+    #<p>Thank you for signing up!</p>
+    #<p>Please click the link below to verify your email. This link will expire in 3 minutes:</p>
+    #<a href="{verification_link}">Verify Email</a>
+   # """
 
     # Send email in the background
-    background_tasks.add_task(send_email, email_subject, user.email, email_body)
+    #background_tasks.add_task(send_email, email_subject, user.email, email_body)
 
     return {"message": "User created successfully. Please check your email to verify your account."}
 
@@ -150,7 +154,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    db_user.is_verified = True
+    #db_user.is_verified = True
     db.commit()
     return RedirectResponse(url=f"{FRONTEND_URL}/profile/overview")
 
@@ -179,7 +183,7 @@ async def google_login():
 # Process login request from google and return user data with access token
 
 @app.get("/api/profile", response_model=schema.UserProfile)
-def get_profile(current_user: schema.UserToken = Depends(get_current_user)):
+def get_profile(current_user: schema.UserToken = Depends(is_authenticated)):
     """
     Endpoint to fetch the profile details of the logged-in user.
     """
